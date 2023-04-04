@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  application
+  namespace: default
+  labels:
+    app:  application
+spec:
+  selector:
+    matchLabels:
+      app: application
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app:  application
+    spec:
+      initContainers:
+      - name: application-init
+        image: busybox:1.28
+        command: ['sh', '-c', "until nslookup mongo.default.svc.cluster.local; do echo waiting for mongo; sleep 2; done"]
+      containers:
+      - name:  application
+        image:  andriikopytsia/akopytsia1:latest
+        resources:
+          requests:
+            cpu: "0.2"
+            memory: 64Mi
+          limits:
+            cpu: "0.5"
+            memory: 128Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 5000
+          initialDelaySeconds: 5
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthx
+            port: 5000
+          initialDelaySeconds: 5
+          timeoutSeconds: 2
+          successThreshold: 1
+          failureThreshold: 3
+          periodSeconds: 10
+        env:
+        - name: lesson
+          valueFrom:
+            configMapKeyRef:
+              name: application
+              key: lesson
+        ports:
+        - containerPort:  80
+          name:  application
+      restartPolicy: Always
+      imagePullSecrets:
+        - name: regcred
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: application
+  namespace: default
+spec:
+  selector:
+    app: application
+  type: ClusterIP
+  sessionAffinity: None
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+  ports:
+  - name: application
+    protocol: TCP
+    port: 80
+    targetPort: 5000
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: application
+  namespace: default
+data:
+  log_level: INFO
+  lesson: module3

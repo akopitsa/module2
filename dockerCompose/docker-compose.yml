@@ -11,13 +11,13 @@ services:
       - .env
     ports:
       - 27017:27017
-    volumes:
-      - ./init-db.js:/docker-entrypoint-initdb.d/init-db.js:ro
+    # volumes:
+    #   - ./init-db.js:/docker-entrypoint-initdb.d/init-db.js:ro
     networks:
       - mongo_net
 
   application:
-    image: andriikopytsia/akopytsia
+    image: andriikopytsia/akopytsia1
     #build: ../application
     container_name: application
     restart: always
